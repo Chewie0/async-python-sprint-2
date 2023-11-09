@@ -1,21 +1,18 @@
 from functools import wraps
-import operator
+
+EVENTS = {
+    'pending_jobs': (),
+    'error_jobs': (),
+    'done_jobs': (),
+    'started_jobs': ()
+}
 
 
 def coroutine(f):
-    @wraps(f) # https://docs.python.org/3/library/functools.html#functools.wraps
+    @wraps(f)  # https://docs.python.org/3/library/functools.html#functools.wraps
     def wrap(*args, **kwargs):
         gen = f(*args, **kwargs)
         gen.send(None)
         return gen
+
     return wrap
-
-
-
-class SingletonMeta(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(SingletonMeta, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
