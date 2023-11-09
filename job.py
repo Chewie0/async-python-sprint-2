@@ -1,29 +1,12 @@
 import logging
-import signal
 from enum import Enum
 from datetime import datetime, timedelta
-from threading import Timer, Event, Thread
+from threading import Timer
 from uuid import uuid4, UUID
 from typing import Callable, Any, Optional
-from scheduler import Scheduler
+
 
 logger = logging.getLogger()
-
-
-def time_break(func):
-    def wrapper(*args, **kwargs):
-        try:
-            logging.info('Run job with timeout')
-            signal.alarm(args[0].max_working_time)
-            res = func(*args, **kwargs)
-            signal.alarm(0)
-            logging.info('Job complete')
-            return res
-        except Exception as e:
-            logger.error('Timeout error for job')
-            return None
-
-    return wrapper
 
 
 class Job():
@@ -39,7 +22,7 @@ class Job():
                  max_working_time: int = 0,
                  tries: int = 0,
                  dependencies: Optional[list[UUID]] = None,
-                 shed: Optional[Scheduler] = None):
+                 ):
         self._start_at = start_at
         self._max_working_time = max_working_time
         self._tries = tries
@@ -48,9 +31,11 @@ class Job():
         self._func = func
         self._result = None
         self._error = None
-        self._shed = shed
         self._thread_obj = None
         self._status = self.Job_stat.PENDING
+        self._complite_job = None
+        self._job_failed = None
+        self._thread = None
 
     def run(self) -> None:
         try:
@@ -62,17 +47,27 @@ class Job():
                 logger.info('Job run %s', self)
                 self._result = self._func()
             self._status = self.Job_stat.DONE
-            self._shed.complete_job(self)
+            self._complite_job(self)
             logger.info('Job complete %s', self)
         except Exception as exc:
             self.failed(exc)
 
+    def get_complited_job(self, complite_job) -> None:
+        self._complite_job = complite_job
 
-    def terminate_job(self):
-        logger.info('Killed thread of job %s ',self)
-        self._status = self.Job_stat.FAILED
-        self._result = None
-        self._error = None
+    def get_job_failed(self, job_failed) -> None:
+        self._job_failed = job_failed
+
+    def get_thread(self, thread):
+        self._thread = thread
+
+    def terminate_job(self) -> None:
+        if self._status == self.Job_stat.RUNNING:
+            logger.info('Killed thread of job %s ', self)
+            self._thread.kill()
+            self._status = self.Job_stat.FAILED
+            self._result = None
+            self._error = None
 
     def stop(self) -> None:
         self._status = self.Job_stat.PENDING
@@ -87,13 +82,11 @@ class Job():
 
     def failed(self, error: Exception) -> None:
         logger.error('Job %s failed', self)
-        self._shed.job_failed(self)
+        self._job_failed(self)
         self._error = error
         self._status = self.Job_stat.FAILED
 
-
     def _func_with_timer(self) -> None:
-        #self._result = self._func()
         self._timer = Timer(self.max_working_time, self.terminate_job)
         self._timer.start()
         self._result = self._func()
@@ -101,6 +94,10 @@ class Job():
     @property
     def status(self) -> Job_stat:
         return self._status
+
+    @property
+    def result(self) -> Any:
+        return self._result
 
     @property
     def id(self) -> UUID:
@@ -121,11 +118,6 @@ class Job():
     @property
     def dependencies(self) -> Optional[list[UUID]]:
         return self._dependencies
-
-    def __lt__(self, other) -> bool:
-        if other.status.value != self.status.value:
-            return other.status.value > self.status.value
-        return other.start_at > self.start_at
 
     def __repr__(self) -> str:
         return f'<Job: {self._id}, {self._func.__name__}, {self._status.name}>'
