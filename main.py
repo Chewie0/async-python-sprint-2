@@ -3,11 +3,11 @@ import os
 from urllib.request import urlopen, Request
 import time
 from datetime import datetime, timedelta
-from logging import config
 
 from logging_conf import LOG_CONFIG
 from scheduler import Scheduler
 from job import Job
+
 
 logging.config.dictConfig(LOG_CONFIG)
 logger = logging.getLogger()

@@ -19,7 +19,6 @@ class SheduleTest(unittest.TestCase):
         self.assertIsNone(job.result, msg='result not none')
         s.join()
 
-
     def test_normal_job(self):
         s = Scheduler()
         job = Job(lambda: 1)
@@ -46,14 +45,6 @@ class SheduleTest(unittest.TestCase):
         time.sleep(5)
         self.assertEqual("".join([j.result for j in s.done_jobs]), 'hello world!')
         s.join()
-
-
-
-
-
-
-
-
 
 
 if __name__ == '__main__':

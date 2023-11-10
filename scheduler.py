@@ -3,6 +3,7 @@ import time
 import threading
 from datetime import datetime
 
+from job import Job
 from utils import coroutine, Thread_kill
 
 logger = logging.getLogger()
@@ -21,7 +22,7 @@ class Scheduler(threading.Thread):
         self._kill = threading.Event()
         self._interval = sleep_interval
 
-    def schedule(self, job) -> None:
+    def schedule(self, job: Job) -> None:
         if len(self._pending_jobs) + len(self._running_jobs) <= self._pool_size:
             self._pending_jobs.append(job)
 
@@ -38,7 +39,7 @@ class Scheduler(threading.Thread):
             if len(self._pending_jobs) > 0:
                 job = self._pending_jobs.pop(0)
                 job.get_job_failed(self.job_failed)
-                job.get_complited_job(self.complete_job)
+                job.get_completed_job(self.complete_job)
                 if self.check_deps_for_job(job):
                     logger.info('Send to executor job %s', job)
                     exc.send(job)
@@ -76,7 +77,7 @@ class Scheduler(threading.Thread):
     def pending_jobs(self) -> list:
         return self._pending_jobs
 
-    def job_failed(self, job) -> None:
+    def job_failed(self, job: Job) -> None:
         if job.tries > 0:
             logger.info('We have to try %s times', job.tries)
             time.sleep(0.5)
@@ -86,11 +87,11 @@ class Scheduler(threading.Thread):
         self._running_jobs.remove(job)
         self._failed_jobs.append(job)
 
-    def complete_job(self, job) -> None:
+    def complete_job(self, job: Job) -> None:
         self._running_jobs.remove(job)
         self._done_jobs.append(job)
 
-    def check_deps_for_job(self, job) -> bool:
+    def check_deps_for_job(self, job: Job) -> bool:
         if job.dependencies is not None:
             for dep in job.dependencies:
                 if dep not in [item.id for item in self._done_jobs]:
@@ -106,7 +107,7 @@ class Scheduler(threading.Thread):
         logger.info('STOP SHEDULE')
         self._kill.clear()
 
-    def join(self, timeout=None) -> None:
+    def join(self, timeout: int = None) -> None:
         self._is_run = False
         for j in self._running_jobs:
             j.stop()

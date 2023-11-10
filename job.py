@@ -52,7 +52,7 @@ class Job():
         except Exception as exc:
             self.failed(exc)
 
-    def get_complited_job(self, complite_job) -> None:
+    def get_completed_job(self, complite_job) -> None:
         self._complite_job = complite_job
 
     def get_job_failed(self, job_failed) -> None:
