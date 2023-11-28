@@ -1,6 +1,7 @@
 import logging
 import os
 from urllib.request import urlopen, Request
+from logging import config
 import time
 from datetime import datetime, timedelta
 
